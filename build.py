@@ -154,7 +154,7 @@ def decrypt_SMC(SMC):
 	return res
 
 def encrypt_CB(CB, random):
-	secret = "\xDD\x88\xAD\x0C\x9E\xD6\x69\xE7\xB5\x67\x94\xFB\x68\x56\x3E\xFA"
+	secret = secret_1BL
 	key = hmac.new(secret, random, sha).digest()[0:0x10]
 	CB = CB[0:0x10] + random + RC4.new(key).encrypt(CB[0x20:])
 	return CB, key
@@ -172,7 +172,7 @@ def encrypt_CE(CE, CD_key, random):
 	return CE
 
 def encrypt_CF(CF, random):
-	secret = "\xDD\x88\xAD\x0C\x9E\xD6\x69\xE7\xB5\x67\x94\xFB\x68\x56\x3E\xFA"
+	secret = secret_1BL
 	key = hmac.new(secret, random, sha).digest()[0:0x10]
 	CF_key = CF[0x330:0x330+0x10]
 	CF = CF[0:0x20] + random + RC4.new(key).encrypt(CF[0x30:])
