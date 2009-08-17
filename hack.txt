@@ -12,7 +12,7 @@ undestand the hack. If you don't understand a word, calm down - there
 probably will be future releaes, howtos etc.
 
 Please also notice that from a functional side, the result will be the same
-as the KK-hack; it's just must faster, works on more hardware and is more
+as the KK-hack; it's just much faster, works on more hardware and is more
 reliable. So it replaces the KK-hack, not less and not more.
 
 HOWTO
@@ -192,7 +192,7 @@ lets us jump to %r4.
 This code will be executed from hypervisor. It's the first of our code which
 will be executed. %r4 on the syscall entry has to point to this code.
 
-Only the the idle thread context and the HV offset have fixed addresses.
+Only the idle thread context and the HV offset have fixed addresses.
 It's easily possible to merge this so that only two distinct blocks needs to
 be written into memory, but it's not possible to merge this into a single
 block.
@@ -205,7 +205,7 @@ Context, the Context Restores and the loader code. The ECC data will carry
 the HV offset.
 
 
-To to a DMA read, the following NAND registers need to be written:
+To do a DMA read, the following NAND registers need to be written:
 
 ea00c01c Address for Payload
 ea00c020 Adresss for ECC
@@ -237,7 +237,7 @@ when the kernel has been loaded, and everything is fine.
 
 Right?
 
-Well, that would be too easy. While most NAND registers are mapped, tyhe DMA
+Well, that would be too easy. While most NAND registers are mapped, the DMA
 address registers (1c, 20) are not. We can DMA, but only to the default
 address of zero (or wherever the kernel last DMAed into). Fail.
 
@@ -277,7 +277,7 @@ already. Let me refresh your knowledge about the boot process again:
 Buried deep inside the CPU die, this ~32kb of ROM code is responsible for
 reading the 2BL from NAND-flash and decrypts it into the embedded SRAM in the
 CPU. It verifies the hash of the decrypted image with a signed block at the
-beginning of the 2BL, and will stop execution of this hash mismatches. This
+beginning of the 2BL, and will stop execution if this hash mismatches. This
 code also contains a number of test functions, which can be activated by
 pulling the 5 "POST IN"-pins, which are available on the backside of the
 PCB. None of these tests looks particulary interesting (from an exploitation
@@ -379,7 +379,7 @@ the pairing data anymore - the 4BL would be decrypted with the wrong key
 then. Instead you need to decrypt the 4BL (which requires knowing the CPU
 key), and re-encrypt it with the old algorithm.
 
-However, 1920 was suspecible to the timing attack - so a CPU-key recovery
+However, 1920 was suspectible to the timing attack - so a CPU-key recovery
 was possible on one console, which allowed us to decrypt the 1920 4BL. That
 4BL shows a very intersting change: Whenever zero-pairing is detected, the
 update slots are not ignored anymore. Instead, if the update-slots are
@@ -591,6 +591,6 @@ on xboxhacker.net.
 (in order of appearance)
 recovery of CB1920 by robinsod,
 initial JTAG reverse enginneering by tmbinc,
-getting importants facts straight by SeventhSon,
+getting important facts straight by SeventhSon,
 first description of how it worked out by Martin_sw,
 SMC JTAG code, lots of testing and debugging by Tiros,
