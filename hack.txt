@@ -232,7 +232,7 @@ uses the same protocol as the kernel uses, so it writes an address, does a
 It could also do a "READ (DMA)"-command. So by hacking the SMC, we could
 make the box do the exploit, without any shader - the SMC can access the NAND
 controller all the time, even when the kernel is running (though it will
-likely interfere with the kernel). So, just we just trigger the DMA read
+likely interfere with the kernel). So, we just trigger the DMA read
 when the kernel has been loaded, and everything is fine.
 
 Right?
@@ -578,7 +578,7 @@ By default, the following memory map is used:
 00f7c000          : smc config block
 00ffc000          : exploit buffer
 
-But this can be tweaeked. 
+But this can be tweaked. 
 
 
 
