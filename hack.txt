@@ -594,3 +594,4 @@ initial JTAG reverse enginneering by tmbinc,
 getting important facts straight by SeventhSon,
 first description of how it worked out by Martin_sw,
 SMC JTAG code, lots of testing and debugging by Tiros,
+jester, for proofreading of this document
