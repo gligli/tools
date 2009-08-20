@@ -16,7 +16,7 @@ secret_1BL = None
 
 XELL_BASE_FLASH = 0xc0000
 CODE_BASE = 0x1c000000
-EXPLOIT_BASE = 0xffc000
+EXPLOIT_BASE = 0x200
 
 CROSS_COMPILE = "xenon-"
 
@@ -31,7 +31,15 @@ Xell = ""
 Exploit = None
 SMC_Config = "\xef\x12\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x04\x01\x00\x7f\x7f\xff\xfc\xff\xff\xff\xd0\x58\x1b\xbe\x64\x4b\xf0\x73\x5c\x4b\xfc\x73\xb9\x4a\xf8\x74\x03\x50\x61\x64\x64\x6e\x75\xff"
 
-assert secret_1BL is not None, "You need to insert the 1BL key"
+if secret_1BL is None:
+	secret_1BL = open("key_1BL.bin", "rb").read()
+
+ # Import Psyco if available
+try:
+	import psyco
+	psyco.full()
+except ImportError:
+	pass
 
 # first, unpack base input image. We are ignoring any updates here
 import hmac, sha, struct, sys
@@ -384,35 +392,45 @@ def add_to_flash(d, w, offset = 0):
 	print "0x%08x..0x%08x (0x%08x bytes) %s" % (offset + len(Final), offset + len(Final) + len(d) - 1, len(d), w)
 	Final += d
 
-add_to_flash(Header, "Header")
+def pad_to(loc):
+	global Final
+	pad = "\xFF" * (loc - len(Final))
+	add_to_flash(pad, "Padding")
+
+add_to_flash(Header[:0x200], "Header")
+add_to_flash(Exploit[:0x200], "Exploit")
+pad_to(0x1000)
 add_to_flash(SMC, "SMC")
 add_to_flash(Keyvault, "Keyvault")
 add_to_flash(CB, "CB %d" % build(CB))
 add_to_flash(CD, "CD %d" % build(CD))
 add_to_flash(CE, "CE %d" % build(CE))
-
-pad = (patch_offset - len(Final)) * "\xFF"
-add_to_flash(pad, "Padding")
+pad_to(patch_offset)
 add_to_flash(CF, "CF %d" % build(CF))
 add_to_flash(CG, "CG %d" % build(CG))
-pad = "\xFF" * (XELL_BASE_FLASH - len(Final))
-add_to_flash(pad, "Padding")
+pad_to(XELL_BASE_FLASH)
 
 add_to_flash(Xell[0:256*1024], "Xell (backup)")
 add_to_flash(Xell[256*1024:], "Xell (main)")
 
-open("output/image", "wb").write(Final)
-# use this if you need a xell update
-# open("output/image_%08x.ecc" % (XELL_BASE_FLASH + 256*1024), "wb").write(addecc(Xell[256*1024:], XELL_BASE_FLASH + 256*1024))
-print "- ok"
-open("output/image_00000000.ecc", "wb").write(addecc(Final))
+print " * Encoding ECC..."
+
+Final = addecc(Final)
+
+exploit_base = EXPLOIT_BASE/0x200*0x210
+
+if exploit_base < len(Final):
+	Final = Final[:exploit_base]  + addecc(Final[exploit_base:exploit_base + 0x200], 0x50030000 * 32) + Final[exploit_base + 0x210:]
+
+open("output/image_00000000.ecc", "wb").write(Final)
 
 print "------------- Written into output/image_00000000.ecc"
 
-Final = ""
-add_to_flash(Exploit, "Exploit buffer", EXPLOIT_BASE)
-open("output/image_%08x.ecc" % EXPLOIT_BASE, "wb").write(addecc(Final, 0x50030000 * 32))
-print "------------- Written into output/image_%08x.ecc" % EXPLOIT_BASE
+if exploit_base >= len(Final):
+	Final = ""
+	add_to_flash(Exploit, "Exploit buffer", EXPLOIT_BASE)
+	open("output/image_%08x.ecc" % EXPLOIT_BASE, "wb").write(addecc(Final, 0x50030000 * 32))
+	print "------------- Written into output/image_%08x.ecc" % EXPLOIT_BASE
 
 SMC_CONFIG_ADDR = 0xf7c000
 SMC_Config = (SMC_Config + 0x200 * "\xFF")[:0x200]
