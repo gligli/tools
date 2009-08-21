@@ -356,13 +356,13 @@ def calcecc(data):
 	val = ~val
 	return data[:-4] + struct.pack("<L", (val << 6) & 0xFFFFFFFF)
 
-def addecc(data, block = 0):
+def addecc(data, block = 0, off_8 = "\x00" * 4):
 	res = ""
 	while len(data):
 		d = (data[:0x200] + "\x00" * 0x200)[:0x200]
 		data = data[0x200:]
 		
-		d += struct.pack("<LBB10s", block / 32, 0, 0xFF, "\0")
+		d += struct.pack("<L4B4s4s", block / 32, 0, 0xFF, 0, 0, off_8, "\0\0\0\0")
 		d = calcecc(d)
 		block += 1
 		res += d
@@ -420,7 +420,7 @@ Final = addecc(Final)
 exploit_base = EXPLOIT_BASE/0x200*0x210
 
 if exploit_base < len(Final):
-	Final = Final[:exploit_base]  + addecc(Final[exploit_base:exploit_base + 0x200], 0x50030000 * 32) + Final[exploit_base + 0x210:]
+	Final = Final[:exploit_base]  + addecc(Final[exploit_base:exploit_base + 0x200], 0, struct.pack(">I", 0x350)) + Final[exploit_base + 0x210:]
 
 open("output/image_00000000.ecc", "wb").write(Final)
 

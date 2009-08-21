@@ -205,7 +205,7 @@ b final /* we don't have more space here, so continue below... */
 // 50
 . = stack + 0x50
 		/* Context restore at 800701c0 loads r0..r12 from here */
-.long 0x20000000, 0x00000046, 0x00000000, V(stack) // r0, r1
+.long 0x20000000, 0x00000046+2, 0x00000000, V(stack) // r0, r1
 
 // 60
 . = stack + 0x60
