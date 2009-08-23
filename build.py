@@ -20,6 +20,11 @@ EXPLOIT_BASE = 0x200
 
 CROSS_COMPILE = "xenon-"
 
+# don't change anything from here.
+
+# so we can do updates properly
+SCRIPT_VERSION = 0x00
+
 Keyvault = None
 SMC = None
 CB = None
@@ -29,7 +34,6 @@ CF = None
 CG = None
 Xell = ""
 Exploit = None
-SMC_Config = "\xef\x12\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x04\x01\x00\x7f\x7f\xff\xfc\xff\xff\xff\xd0\x58\x1b\xbe\x64\x4b\xf0\x73\x5c\x4b\xfc\x73\xb9\x4a\xf8\x74\x03\x50\x61\x64\x64\x6e\x75\xff"
 
 if secret_1BL is None:
 	secret_1BL = open("key_1BL.bin", "rb").read()
@@ -278,6 +282,7 @@ print "ok"
 print " * checking required versions...",
 assert CB and build(CB) >= 1920, "we need CB of at least 1920 (allowing zeropair-updates)"
 assert CD and build(CD) == build(CB), "CD must match CB"
+assert CD and build(CD) != 8453, "This CD doesn't allow 4532 or 4548 to be booted."
 assert CE and build(CE) == 1888, "CE should always be 1888"
 assert CF and build(CF) in [4532, 4548], "CF must be either 4532 or 4548 (exploitable)"
 assert CG and build(CG) == build(CF), "CG must match CF"
@@ -286,7 +291,7 @@ print "ok"
 xenon_builds = [1920, 1921]
 zephyr_builds = [4558]
 falcon_builds = [5766, 5770, 5761]
-jasper_builds = [6712]
+jasper_builds = [6712, 6723]
 
 print " * this image will be valid *only* for:",
 if build(CB) in xenon_builds: print "xenon",
@@ -312,8 +317,7 @@ print " * base size: %x" % base_size
 
 Final = ""
 
-#c = "\xA9 2004-2007 Microsoft Corporation. All rights reserved."
-c = "zeropair image, CB=%d" % build(CB)
+c = "zeropair image, version=%02x, CB=%d" % (SCRIPT_VERSION, build(CB))
 Header = struct.pack(">HHLLL64s5LLLLLLLL", 0xFF4F, 1888, 0, 0x8000, base_size, c, 0, 0, 0, 0, 0x4000, patch_offset, 0x20712, 0x4000, 0, 0, 0x3000, 0x1000)
 
 Header = (Header + "\0" * 0x1000)[:0x1000]
@@ -378,7 +382,7 @@ assert not os.system(CROSS_COMPILE + "objcopy -O binary payload.o output/payload
 
 Exploit = open("output/payload.bin").read()
 
-assert len(Final) < XELL_BASE_FLASH, "Please move XELL_BSAE_FLASH"
+assert len(Final) < XELL_BASE_FLASH, "Please move XELL_BASE_FLASH"
 
 
 if len(Xell) <= 256*1024:
@@ -431,14 +435,5 @@ if exploit_base >= len(Final):
 	add_to_flash(Exploit, "Exploit buffer", EXPLOIT_BASE)
 	open("output/image_%08x.ecc" % EXPLOIT_BASE, "wb").write(addecc(Final, 0x50030000 * 32))
 	print "------------- Written into output/image_%08x.ecc" % EXPLOIT_BASE
-
-SMC_CONFIG_ADDR = 0xf7c000
-SMC_Config = (SMC_Config + 0x200 * "\xFF")[:0x200]
-
-Final = ""
-add_to_flash(SMC_Config, "SMC Config", SMC_CONFIG_ADDR)
-
-open("output/image_%08x.ecc" % SMC_CONFIG_ADDR, "wb").write(addecc(Final, SMC_CONFIG_ADDR / 0x200))
-print "------------- Written into output/image_%08x.ecc" % SMC_CONFIG_ADDR
 
 print " ! please flash output/image_*.ecc, and setup your JTAG device to do the DMA read from %08x" % (EXPLOIT_BASE)
