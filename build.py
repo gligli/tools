@@ -229,7 +229,7 @@ for i in sys.argv[1:]:
 		unpack_update(image)
 		CF = decrypt_CF(CF)
 		CG = decrypt_CG(CG, CF)
-	elif len(image) == 0x3000 and image.find("<Copyright 2001-2005 Microsoft>") >= 0:
+	elif len(image) == 0x3000 and image.find("<Copyright 2001-") >= 0:
 		print " * found decrypted SMC"
 		SMC = image
 	elif len(image) == 0x3000:
