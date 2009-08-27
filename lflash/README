@@ -1,0 +1,98 @@
+lflash is a linux-based flasher.
+
+With a lot of caution, it can be used to convert a KK-exploited box into the
+new hack. Of course you still need to add the resistors.
+
+PLEASE DON'T YET USE THIS TOOL UNLESS
+ - YOU HAVE A WORKING SECONDARY WAY TO FLASH (like the LPT flasher)
+ - YOU HAVE MADE A NAND BACKUP
+
+Also please note that lflash tries to do proper badblock remapping. That,
+unfortunately, means that you can not expect it to flash full images.
+
+PLEASE USE THIS FLASHER ONLY WITH IMAGES GENERATED WITH build.py UNLESS YOU
+KNOW *EXACTLY* WHATS HAPPENING. 
+
+DO NOT USE THIS WITH FULL 16MB IMAGES (like xenon-hack.bin)! The build.py
+script was modified to build images which are badblock-safe, whereas the old
+images were not badblock safe.
+
+lflash doesn't yet support largeblock jasper. 
+
+Usage:
+ ./lflash backup.bin image_00000000.ecc
+
+lFlash will generate a backup first, verifies the backup, and then flashes
+the new image. If flashing fails, please do not switch off the box, but ask
+for help! We can likely recover.
+
+
+
+
+For the tech-savvy:
+
+The flash controller gives you access to 15.8MB of logical flash space.
+0.5MB are allocated for badblock replacements. The flash controller
+automatically maps them away with the following algorithm:
+
+If you try to read a sector either with the 0xC8000000 memory map or with
+the "read logical" command, it will first look at the given address. If it
+doesn't find a sector there which is a.) good (ECC[5] == 0xFF), b.) has a
+valid ECC[12..15], c.) has a valid block number in ECC[0..3], then it will
+scan for a replacement block. It will do that by starting at the top of the
+flash, scanning downwards until it finds a block with the right block
+number. This happens completely automatic for reading, but not for writing.
+It also doesn't happen when you read physical pages.
+
+I believe the proper way to handle flash images should be the following:
+
+We should always read in "logical" mode. This will map away bad sectors, and
+replace them with the proper content. Thus, a flash image should never
+contain any bad blocks.
+
+A flash image should only consist of the logical area, i.e. of the first
+15.8MB. The remaining 0.5MB should not be part of the image, since those
+blocks are either empty, or are replacement blocks which were already used
+in the data area.
+
+Flashing a 15.8MB image will work without destroying badblock information in
+the flash. It will also ensure that whereever your flash has bad sectors, it
+will just relocate the blocks.
+
+If you are using the Xbox 360 NAND controller, I propose the following
+algorithm for programming:
+
+- For every eraseblock (16k on smallblock),
+  - read the first sector's ECC information in logical mode
+  - read the physical address from the NAND register space
+    (if the flash controller determined that this page was bad, it already
+    looked for a replacement block for you. The address of this block is
+    placed in the physical address register.
+  - use the physical address from the NAND register space as target for this
+    block, i.e. erase the block, and program it. You should not encounter
+    any errors, unless a *new* bad block developed.
+
+This way, you shouldn't have problem with bad sectors.
+
+If you are not using the Xbox 360 NAND controller, you have to do the
+remapping on your own:
+
+- For every eraseblock
+  - read the first sector.
+  - check that it's not bad, has valid ECC, and a valid block number.
+  - if it doesn't have all of them, don't touch this sector.
+    - start at the top of the flash, scanning downwards, until you find a
+      sector which is the replacement block for this sector. Use this sector
+      as target.
+  - erase&program the block.
+
+If you have an 16MB image, don't flash it completely. Instead, map away bad
+sectors in the flash image. If you don't do this, you will generate a bad
+block on the target NAND, even if there isn't really a bad block. Make sure
+to only flash the first 15.8MB, but with the badblock remapping.
+
+This is also the reason why build.py was updated to move the exploit buffer
+down from 0xFC000 to 0x200.
+
+have fun,
+tmbinc
