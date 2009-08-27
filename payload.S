@@ -168,32 +168,29 @@ stack:
 
 	/* our registers are largely prefilled form the stack; see below. */
 exploit_code:
-1:
-	lwz %r9, 0x1018(%r8)
-	rlwinm  %r12, %r9, 0,8,5
-	cmplwi  %r12, 0
+
+		/* send SMC query for powerup reason */
+	stw %r9, 0x1084(%r8)  /* 00000004 (byteswapped) */
+	stw %r10, 0x1080(%r8) /* 01000000 */
+	stw %r11, 0x1080(%r8) /* 00000000 */ 
+	stw %r11, 0x1080(%r8) /* 00000000 */
+	stw %r11, 0x1080(%r8) /* 00000000 */
+	stw %r11, 0x1084(%r8) /* 00000000 */
+
+		/* wait for SMC answer */
+1:	
+	lwz %r12, 0x1094(%r8)
+	and. %r12, %r12, %r9   /* check for 04 (swapped) */
+	beq 1b
+	stw %r9, 0x1094(%r8)  /* 00000004 (byteswapped) */
+	lwz %r12, 0x1090(%r8)
+	lwz %r3, 0x1090(%r8)
+	lwz %r3, 0x1090(%r8)
+	lwz %r3, 0x1090(%r8)
+	stw %r11, 0x1094(%r8) /* 00000000 */
+	rlwinm %r3, %r12, 8, 24, 31
+	cmpwi %r3, 0x1
 	bne 1b
-
-	rlwinm. %r12, %r9, 0,7,7
-	beq 1f
-	bl getc
-	cmpwi %r3, '@'  /* '@' -> serial loader */
-	beq serial_loader
-	cmpwi %r3, ' '  /* ' ' -> backup xell */
-	beq flash_loader
-1:
-	addis %r5, %r5, 0x4
-
-flash_loader:
-	/* POST = 0x10 */
-li %r3, 0x10
-rldicr %r3, %r3, 56, 7
-std %r3, 0(%r7)
-
-	/* Copy from Flash, src = %r5, dst = %r6 */
-		mtlr %r6
-		lis %r4, 1 /* 256k */
-		mtctr   %r4
 
 b final /* we don't have more space here, so continue below... */
 
@@ -216,10 +213,10 @@ b final /* we don't have more space here, so continue below... */
 
 // 80  r6, r7
 .long 0x80000000, CODE_BASE, 0x80000200, 0x61010
-// 90
-.long 0x80000200, 0xea000000, 0, 0
-// A0
-.long 0, 0, 0, 0
+// 90 r8, r9
+.long 0x80000200, 0xea000000, 0, 0x04000000
+// A0 r10, r11
+.long 0, 0x01000000, 0, 0
 // B0
 .long 0, 0, 0, 0
 // C0
@@ -232,6 +229,26 @@ b final /* we don't have more space here, so continue below... */
 //.long 0, 0x80060c90, 0, 0
 
 final:
+
+	rlwinm %r3, %r12, 16, 24, 31
+	cmpwi %r3, 0x5a /* poweron by pressing guide button while connected to the back USB */
+	beq flash_loader
+	cmpwi %r3, 0x24 /* poweron by pressing the windows button on the IR remote */
+	beq flash_loader
+
+good:
+	addis %r5, %r5, 0x4
+
+flash_loader:
+	/* POST = 0x10 */
+li %r3, 0x10
+rldicr %r3, %r3, 56, 7
+std %r3, 0(%r7)
+
+	/* Copy from Flash, src = %r5, dst = %r6 */
+		mtlr %r6
+		lis %r4, 1 /* 256k */
+		mtctr   %r4
 
 1:	lwz     %r8, 0(%r5)		//Memcopy
 		stw     %r8, 0(%r6)
@@ -249,49 +266,6 @@ rldicr %r3, %r3, 56, 7
 std %r3, 0(%r7)
 
 		blr
-
-serial_loader:
-	mtctr %r6    /* r6 is our code target addr */
-	li %r3, '>'
-	bl putc
-1:
-	bl getc
-	stbu %r3, 1(%r6)
-	dcbst %r0, %r6
-	icbi %r0, %r6
-	cmpwi %r3, 'x'
-	beq  2f
-	li %r11, 0
-2:
-	addi %r11, %r11, 1 /* r11 counts x */
-	cmpwi %r11, 10
-	bne 1b
-
-	li %r3, '!'
-	bl putc
-
-	bctr
-
-putc:
-  slwi %r3, %r3, 24
-  stw %r3, 0x1014(%r8)
-1:
-  lwz %r3, 0x1018(%r8)
-  rlwinm. %r3, %r3, 0, 6, 6
-  beq 1b
-  blr
-
-getc:
-1:
-	lwz %r9, 0x1018(%r8)
-	rlwinm  %r12, %r9, 0,8,5
-	cmplwi  %r12, 0
-	bne 1b
-	rlwinm. %r12, %r9, 0,7,7
-	beq 1b
-	lwz     %r3, 0x1010(%r8)
-	srwi    %r3, %r3, 24
-	blr
 
 #if 0
 // F0
