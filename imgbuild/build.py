@@ -288,6 +288,13 @@ assert CF and build(CF) in [4532, 4548], "CF must be either 4532 or 4548 (exploi
 assert CG and build(CG) == build(CF), "CG must match CF"
 print "ok"
 
+print " * Fixing up the hacked SMC code with the target address"
+offset_jtag = SMC.find("\xea\x00\xc0\x0f")
+assert offset_jtag > 0, "SMC does not include the JTAG hack"
+SMC = SMC[:offset_jtag+4] + struct.pack(">I", EXPLOIT_BASE) + SMC[offset_jtag+8:]
+
+open("output/SMC", "wb").write(SMC)
+
 xenon_builds = [1920, 1921]
 zephyr_builds = [4558]
 falcon_builds = [5766, 5770, 5761]
