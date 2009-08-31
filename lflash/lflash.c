@@ -194,6 +194,22 @@ int verify_flash_with_file(const char *filename, int raw)
 	FILE *f = fopen(filename, "rb");
 	if (!f)
 		return -1;
+
+	if (raw == -1) /* auto */
+	{
+		fseek(f, 0, SEEK_END);
+	
+		if (ftell(f) == 16*1024*1024 / 0x200 * 0x210)
+		{
+			raw = 1;
+			printf(" * detected RAW nand file, verifying in raw mode.\n");
+		} else
+		{
+			raw = 0;
+			printf(" * detected short nand file, verifying in cooked mode.\n");
+		}
+		fseek(f, 0, SEEK_SET);
+	}
 	
 	printf(" * Verifying flash with %s...\n", filename);
 	
@@ -208,7 +224,7 @@ int verify_flash_with_file(const char *filename, int raw)
 		}
 		if (fread(sector, 1, 0x210, f) != 0x210)
 			return i;
-		readsector(sector_flash, i, 1);
+		readsector(sector_flash, i, raw);
 		if (sector_flash[0x205] != 0xFF) /* bad sector */
 		{
 			printf(" * ignoring bad sector at %08x\n", i);
@@ -232,7 +248,22 @@ int flash_from_file(const char *filename, int raw)
 	FILE *f = fopen(filename, "rb");
 	if (!f)
 		return -1;
+
+	if (raw == -1) /* auto */
+	{
+		fseek(f, 0, SEEK_END);
 	
+		if (ftell(f) == 16*1024*1024 / 0x200 * 0x210)
+		{
+			raw = 1;
+			printf(" * detected RAW nand file, flashing in raw mode.\n");
+		} else
+		{
+			raw = 0;
+			printf(" * detected short nand file, flashing in cooked mode.\n");
+		}
+		fseek(f, 0, SEEK_SET);
+	}
 	
 	int i;
 	for (i = 0; i < 16*1024*1024; i += 0x4000)
@@ -249,7 +280,7 @@ int flash_from_file(const char *filename, int raw)
 		
 		int phys_pos;
 		
-		if (raw)
+		if (!raw)
 		{
 			phys_pos = sfcx_readreg(PHYSICAL);
 		
@@ -278,7 +309,10 @@ int main(int argc, char **argv)
 	flash = ioremap(0xea00c000, 0x1000, 1);
 	
 	printf(" * flash config: %08x\n", sfcx_readreg(0));
-	if ((sfcx_readreg(0) &~8) != 0x01198010)
+	
+	sfcx_writereg(0, sfcx_readreg(0) &~ (4|8|0x3c0));
+	
+	if (sfcx_readreg(0) != 0x01198010)
 	{
 		printf(" * unknown flash config %08x\n", sfcx_readreg(0));
 		return 1;
@@ -302,8 +336,11 @@ int main(int argc, char **argv)
 	{
 		if (res == -2)
 			printf(" * verify failed!\n");
+		else if (res > 0)
+			printf(" * verified correctly, but only %d bytes.\n", res);
 		else
 			printf(" * original image invalid\n");
+		printf(" * I won't flash if you don't have a full, working backup, sorry.\n");
 		return 1;
 	}
 	printf(" * verify ok.\n");
@@ -311,8 +348,9 @@ int main(int argc, char **argv)
 	if (argc > 2)
 	{
 		const char *image = argv[2];
-		flash_from_file(image, 0);
-		res = verify_flash_with_file(image, 0);
+		
+		flash_from_file(image, -1);
+		res = verify_flash_with_file(image, -1);
 		if (res > 0)
 			printf(" * verified %d bytes ok\n", res);
 		else
