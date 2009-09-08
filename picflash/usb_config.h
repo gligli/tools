@@ -56,7 +56,7 @@
 
 /** DEFINITIONS ****************************************************/
 
-#define USB_BUS_SENSE       1 
+#define USB_BUS_SENSE       PORTBbits.RC2 
 #define self_power          0
 
 //Uncomment the following line to make the output HEX of this  

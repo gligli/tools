@@ -3,22 +3,27 @@
 #include "XSPI.h"
 #include "delays.h"
 
-#define EJLo	LATBbits.LATB4 = 0
-#define EJHi	LATBbits.LATB4 = 1
-#define EJTris	TRISBbits.TRISB4
-#define XXLo	LATBbits.LATB3 = 0
-#define XXHi	LATBbits.LATB3 = 1
-#define XXTris	TRISBbits.TRISB3
-#define SSLo	LATBbits.LATB2 = 0
-#define SSHi	LATBbits.LATB2 = 1
-#define SSTris  TRISBbits.TRISB2
-#define SCKLo	LATBbits.LATB1 = 0
-#define SCKHi	LATBbits.LATB1 = 1
-#define SCKTris TRISBbits.TRISB1
-#define MOSILo	LATCbits.LATC7 = 0
-#define MOSIHi	LATCbits.LATC7 = 1
-#define MOSITris TRISCbits.TRISC7
-#define MISO	PORTBbits.RB0
+#define EJLo	LATBbits.LATB1 = 0
+#define EJHi	LATBbits.LATB1 = 1
+#define EJTris	TRISBbits.TRISB1
+
+#define XXLo	LATBbits.LATB0 = 0
+#define XXHi	LATBbits.LATB0 = 1
+#define XXTris	TRISBbits.TRISB0
+
+#define SSLo	LATBbits.LATB4 = 0
+#define SSHi	LATBbits.LATB4 = 1
+#define SSTris  TRISBbits.TRISB4
+
+#define SCKLo	LATBbits.LATB3 = 0
+#define SCKHi	LATBbits.LATB3 = 1
+#define SCKTris TRISBbits.TRISB3
+
+#define MOSILo	LATBbits.LATB6 = 0
+#define MOSIHi	LATBbits.LATB6 = 1
+#define MOSITris TRISBbits.TRISB6
+
+#define MISO	PORTBbits.RB2
 
 void XSPIInit()
 {

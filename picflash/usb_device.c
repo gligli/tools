@@ -327,26 +327,6 @@ void USBDeviceTasks(void)
 {
     BYTE i;
 
-#ifdef USB_SUPPORT_OTG
-    //SRP Time Out Check
-    if (USBOTGSRPIsReady())
-    {
-        if (USBT1MSECIF && USBT1MSECIE)
-        {
-            if (USBOTGGetSRPTimeOutFlag())
-            {
-                if (USBOTGIsSRPTimeOutExpired())
-                {
-                    USB_OTGEventHandler(0,OTG_EVENT_SRP_FAILED,0,0);
-                }       
-            }
-
-            //Clear Interrupt Flag
-            USBClearInterruptFlag(USBT1MSECIFReg,USBT1MSECIFBitNum);
-        }
-    }
-#endif
-
     #if defined(USB_POLLING)
     //If the interrupt option is selected then the customer is required
     //  to notify the stack when the device is attached or removed from the
@@ -362,54 +342,9 @@ void USBDeviceTasks(void)
          //Move to the detached state                  
          USBDeviceState = DETACHED_STATE;
 
-         #ifdef  USB_SUPPORT_OTG    
-             //Disable D+ Pullup
-             U1OTGCONbits.DPPULUP = 0;
-
-             //Disable HNP
-             USBOTGDisableHnp();
-
-             //Deactivate HNP
-             USBOTGDeactivateHnp();
-             
-             //If ID Pin Changed State
-             if (USBIDIF && USBIDIE)
-             {  
-                 //Re-detect & Initialize
-                  USBOTGInitialize();
-
-                  //Clear ID Interrupt Flag
-                  USBClearInterruptFlag(USBIDIFReg,USBIDIFBitNum);
-             }
-         #endif
-
-         #ifdef __C30__
-             //USBClearInterruptFlag(U1OTGIR, 3); 
-         #endif
-            //return so that we don't go through the rest of 
-            //the state machine
          USBClearUSBInterrupt();
          return;
     }
-
-	#ifdef USB_SUPPORT_OTG
-    //If Session Is Started Then
-    else
-	{
-        //If SRP Is Ready
-        if (USBOTGSRPIsReady())
-        {   
-            //Clear SRPReady
-            USBOTGClearSRPReady();
-
-            //Clear SRP Timeout Flag
-            USBOTGClearSRPTimeOutFlag();
-
-            //Indicate Session Started
-            UART2PrintString( "\r\n***** USB OTG B Event - Session Started  *****\r\n" );
-        }
-    }
-	#endif	//#ifdef USB_SUPPORT_OTG
 
     //if we are in the detached state
     if(USBDeviceState == DETACHED_STATE)
@@ -430,9 +365,6 @@ void USBDeviceTasks(void)
         //moved to the attached state
         USBDeviceState = ATTACHED_STATE;
 
-        #ifdef  USB_SUPPORT_OTG
-            U1OTGCON |= USB_OTG_DPLUS_ENABLE | USB_OTG_ENABLE;  
-        #endif
     }
 	#endif  //#if defined(USB_POLLING)
 
@@ -459,28 +391,13 @@ void USBDeviceTasks(void)
         }
     }
 
-    #ifdef  USB_SUPPORT_OTG
-        //If ID Pin Changed State
-        if (USBIDIF && USBIDIE)
-        {  
-            //Re-detect & Initialize
-            USBOTGInitialize();
-
-            USBClearInterruptFlag(USBIDIFReg,USBIDIFBitNum);
-        }
-    #endif
-
     /*
      * Task A: Service USB Activity Interrupt
      */
     if(USBActivityIF && USBActivityIE)
     {
         USBClearInterruptFlag(USBActivityIFReg,USBActivityIFBitNum);
-        #if defined(USB_SUPPORT_OTG)
-            U1OTGIR = 0x10;        
-        #else
-            USBWakeFromSuspend();
-        #endif
+        USBWakeFromSuspend();
     }
 
     /*
@@ -522,14 +439,6 @@ void USBDeviceTasks(void)
         BDT[EP0_OUT_EVEN].STAT.Val &= ~_STAT_MASK;
         BDT[EP0_OUT_EVEN].STAT.Val |= _USIE|_DAT0|_DTSEN|_BSTALL;
 
-        #ifdef USB_SUPPORT_OTG
-             //Disable HNP
-             USBOTGDisableHnp();
-
-             //Deactivate HNP
-             USBOTGDeactivateHnp();
-        #endif
-
         USBClearInterruptFlag(USBResetIFReg,USBResetIFBitNum);
     }
 
@@ -538,12 +447,7 @@ void USBDeviceTasks(void)
      */
     if(USBIdleIF && USBIdleIE)
     { 
-        #ifdef  USB_SUPPORT_OTG 
-            //If Suspended, Try to switch to Host
-            USBOTGSelectRole(ROLE_HOST);
-        #else
-            USBSuspend();
-        #endif
+        USBSuspend();
         
         USBClearInterruptFlag(USBIdleIFReg,USBIdleIFBitNum);
     }
@@ -1177,38 +1081,6 @@ void USBStdFeatureReqHandler(void)
     #else
         unsigned int* pUEP;             
     #endif
-#ifdef	USB_SUPPORT_OTG
-    if ((SetupPkt.bFeature == OTG_FEATURE_B_HNP_ENABLE)&&
-        (SetupPkt.Recipient == RCPT_DEV))
-    {  
-        inPipes[0].info.bits.busy = 1;
-        if(SetupPkt.bRequest == SET_FEATURE)
-            USBOTGEnableHnp();
-        else
-            USBOTGDisableHnp();
-    }
-
-    if ((SetupPkt.bFeature == OTG_FEATURE_A_HNP_SUPPORT)&&
-        (SetupPkt.Recipient == RCPT_DEV))
-    {
-        inPipes[0].info.bits.busy = 1;
-        if(SetupPkt.bRequest == SET_FEATURE)
-            USBOTGEnableSupportHnp();
-        else
-            USBOTGDisableSupportHnp();
-    }
-
-
-    if ((SetupPkt.bFeature == OTG_FEATURE_A_ALT_HNP_SUPPORT)&&
-        (SetupPkt.Recipient == RCPT_DEV))
-    {
-        inPipes[0].info.bits.busy = 1;
-        if(SetupPkt.bRequest == SET_FEATURE)
-            USBOTGEnableAltHnp();
-        else
-            USBOTGDisableAltHnp();
-    }
-#endif    
     if((SetupPkt.bFeature == DEVICE_REMOTE_WAKEUP)&&
        (SetupPkt.Recipient == RCPT_DEV))
     {
@@ -2106,67 +1978,16 @@ void USBClearInterruptFlag(BYTE* reg, BYTE flag)
 #if defined(USB_INTERRUPT)
 void USBDeviceDetach(void)
 {
-    //If the interrupt option is selected then the customer is required
-    //  to notify the stack when the device is attached or removed from the
-    //  bus by calling the USBDeviceAttach() and USBDeviceDetach() functions.
-    if (USB_BUS_SENSE != 1)
-    {
-         // Disable module & detach from bus
-         U1CON = 0;             
-
-         // Mask all USB interrupts              
-         U1IE = 0;          
-
-         //Move to the detached state                  
-         USBDeviceState = DETACHED_STATE;
-
-         #ifdef  USB_SUPPORT_OTG    
-             //Disable D+ Pullup
-             U1OTGCONbits.DPPULUP = 0;
-
-             //Disable HNP
-             USBOTGDisableHnp();
-
-             //Deactivate HNP
-             USBOTGDeactivateHnp();
-             
-             //If ID Pin Changed State
-             if (USBIDIF && USBIDIE)
-             {  
-                 //Re-detect & Initialize
-                  USBOTGInitialize();
-
-                  //Clear ID Interrupt Flag
-                  USBClearInterruptFlag(USBIDIFReg,USBIDIFBitNum);
-             }
-         #endif
-
-         #ifdef __C30__
-             //USBClearInterruptFlag(U1OTGIR, 3); 
-         #endif
-            //return so that we don't go through the rest of 
-            //the state machine
-          return;
-    }
-
-#ifdef USB_SUPPORT_OTG
-    //If Session Is Started Then
-   else
-   {
-        //If SRP Is Ready
-        if (USBOTGSRPIsReady())
-        {   
-            //Clear SRPReady
-            USBOTGClearSRPReady();
-
-            //Clear SRP Timeout Flag
-            USBOTGClearSRPTimeOutFlag();
-
-            //Indicate Session Started
-            UART2PrintString( "\r\n***** USB OTG B Event - Session Started  *****\r\n" );
-        }
-    }
-#endif
+	// Disable module & detach from bus
+	U1CON = 0;             
+	
+	// Mask all USB interrupts              
+	U1IE = 0;          
+	
+	//Move to the detached state                  
+	USBDeviceState = DETACHED_STATE;
+	
+	return;
 }
 /**************************************************************************
     Function:
@@ -2215,10 +2036,6 @@ void USBDeviceAttach(void)
 
         //moved to the attached state
         USBDeviceState = ATTACHED_STATE;
-
-        #ifdef  USB_SUPPORT_OTG
-            U1OTGCON = USB_OTG_DPLUS_ENABLE | USB_OTG_ENABLE;  
-        #endif
     }
 }
 #endif  //#if defined(USB_INTERRUPT)
