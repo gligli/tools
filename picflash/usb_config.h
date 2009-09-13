@@ -61,7 +61,7 @@
 
 //Uncomment the following line to make the output HEX of this  
 //  project work with the MCHPUSB Bootloader    
-//#define PROGRAMMABLE_WITH_USB_MCHPUSB_BOOTLOADER
+#define PROGRAMMABLE_WITH_USB_MCHPUSB_BOOTLOADER
 
 //Uncomment the following line to make the output HEX of this 
 //  project work with the HID Bootloader
