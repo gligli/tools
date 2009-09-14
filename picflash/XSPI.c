@@ -205,6 +205,42 @@ void XSPIRead(BYTE reg, BYTE *data)
 	SSHi;
 }
 
+WORD XSPIReadWord(BYTE reg)
+{
+	WORD res;
+
+	SSLo;
+
+	XSPIW((reg << 2) | 1);
+	
+	XSPIW(0xFF);
+
+	res = XSPIR();
+	res|= ((WORD)XSPIR()) << 8;
+
+	SSHi;
+
+	return res;
+}
+
+BYTE XSPIReadByte(BYTE reg)
+{
+	BYTE res;
+
+	SSLo;
+
+	XSPIW((reg << 2) | 1);
+	
+	XSPIW(0xFF);
+
+	res = XSPIR();
+
+	SSHi;
+
+	return res;
+}
+
+
 void XSPIWrite(BYTE reg, BYTE *data)
 {
 	SSLo;
@@ -217,6 +253,11 @@ void XSPIWrite(BYTE reg, BYTE *data)
 	XSPIW(*data++);
 
 	SSHi;
+}
+
+void XSPIWriteDWORD(BYTE reg, DWORD data)
+{
+	XSPIWrite(reg, &data);
 }
 
 void XSPIWrite0(BYTE reg)

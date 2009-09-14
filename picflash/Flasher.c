@@ -145,8 +145,8 @@ void FlashReadStatusCB(BYTE *buffer, BYTE len)
 {
 	memset(buffer, 0, len);
 
-	buffer[0] = ((BYTE *)&gGlobalStatus)[1];
-	buffer[1] = ((BYTE *)&gGlobalStatus)[0];
+	buffer[0] = ((BYTE *)&gGlobalStatus)[0];
+	buffer[1] = ((BYTE *)&gGlobalStatus)[1];
 }
 
 void FlashReadZeroCB(BYTE *buffer, BYTE len)
@@ -165,7 +165,6 @@ void FlashDataStatus()
 	gCurrentCommand = 0xFF;
 }
 
-
 void FlashDataDeInit()
 {
 	XSPILeaveFlashMode();
@@ -175,7 +174,7 @@ void FlashDataDeInit()
 void FlashDataErase()
 {
 	gGlobalStatus = XNANDErase(gCmdArgA << 5);
-
+	
 	FlashTxSetCBF(FlashReadZeroCB, 4);
 	gCurrentCommand = 0xFF;
 }

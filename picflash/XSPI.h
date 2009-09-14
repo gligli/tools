@@ -12,8 +12,11 @@ extern void XSPIWrite(BYTE reg, BYTE *data);
 extern void XSPIW(BYTE o);
 extern void XSPIW0(void);
 extern BYTE XSPIR(void);
+extern WORD XSPIReadWord(BYTE reg);
+extern BYTE XSPIReadByte(BYTE reg);
 extern void XSPIWrite0(BYTE reg);
 extern void XSPIWriteByte(BYTE reg, BYTE d);
+extern void XSPIWriteDWORD(BYTE reg, DWORD data);
 
 
 

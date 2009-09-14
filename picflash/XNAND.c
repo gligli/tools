@@ -2,37 +2,44 @@
 #include "Compiler.h"
 #include "XSPI.h"
 
+BOOL XNANDWaitReady(WORD timeout)
+{
+	do {
+		if (!(XSPIReadByte(0x04) & 0x01))
+			return TRUE;
+	} while (timeout--);
+
+	return FALSE;
+}
+
+WORD XNANDGetStatus()
+{
+	return XSPIReadWord(0x04);
+}
+
+WORD XNANDClearStatus()
+{
+	BYTE tmp[4];
+
+	XSPIRead(4, tmp);
+	XSPIWrite(4, tmp);	
+}
+
 WORD XNANDReadStart(DWORD block)
 {
 	WORD res;
 	WORD tries = 0x1000;
-	BYTE tmp[4];
 
-	XSPIRead(4, tmp);
-	XSPIWrite(4, tmp);
+	XNANDClearStatus();
 
-	block <<= 9;
-
-	tmp[0] = ((BYTE *)&block)[0];
-	tmp[1] = ((BYTE *)&block)[1];
-	tmp[2] = ((BYTE *)&block)[2];
-	tmp[3] = ((BYTE *)&block)[3];
-	XSPIWrite(0x0C, tmp);
+	XSPIWriteDWORD(0x0C, block << 9);
 
 	XSPIWriteByte(0x08, 0x03);
 
-	while(tries--) {
-		XSPIRead(0x04, tmp);
-		
-		if (!(tmp[0] & 0x01))
-			break;
-	}
+	if (!XNANDWaitReady(0x1000))
+		return 0x8011;
 
-	((BYTE *)&res)[0] = tmp[1];
-	((BYTE *)&res)[1] = tmp[0];
-
-	if (tmp[0] & 0x01)
-		res |= 0x8000;
+	res = XNANDGetStatus();
 
 	XSPIWrite0(0x0C);
 
@@ -40,8 +47,6 @@ WORD XNANDReadStart(DWORD block)
 }
 
 void XNANDReadProcess(BYTE *buffer, BYTE words) {
-	BYTE tmp[4];
-
 	while (words--) {
 		XSPIWrite0(0x08);
 		XSPIRead(0x10, buffer);
@@ -52,58 +57,41 @@ void XNANDReadProcess(BYTE *buffer, BYTE words) {
 WORD XNANDErase(DWORD block)
 {
 	WORD res;
-	WORD tries = 0x1000;
 	BYTE tmp[4];
 
-	while (tries--) {
-		XSPIRead(4, tmp);
-		XSPIWrite(4, tmp);
-	
-		XSPIRead(0, tmp);
-		tmp[0] |= 0x08;
-		XSPIWrite(0, tmp);
-	
-		block <<= 9;
-	
-		tmp[0] = ((BYTE *)&block)[0];
-		tmp[1] = ((BYTE *)&block)[1];
-		tmp[2] = ((BYTE *)&block)[2];
-		tmp[3] = ((BYTE *)&block)[3];
-		XSPIWrite(0x0C, tmp);
-	
-		XSPIWriteByte(0x08, 0xAA);
-		XSPIWriteByte(0x08, 0x55);
-		XSPIWriteByte(0x08, 0x5);
+	XNANDClearStatus();
 
-		XSPIRead(0x04, tmp);
-		
-		if (!(tmp[0] & 0x01))
-			break;
-	}
+	XSPIRead(0, tmp);
+	tmp[0] |= 0x08;
+	XSPIWrite(0, tmp);
 
-	((BYTE *)&res)[0] = tmp[1];
-	((BYTE *)&res)[1] = tmp[0];
+	XSPIWriteDWORD(0x0C, block << 9);
 
-	if ((tmp[0] != 0x00) || (tmp[1] != 0x02))
-		res |= 0x8000;
+	if (!XNANDWaitReady(0x1000))
+		return 0x8001;
 
-	return res;
+	XSPIWriteByte(0x08, 0xAA);
+	XSPIWriteByte(0x08, 0x55);
+
+	if (!XNANDWaitReady(0x1000))
+		return 0x8002;
+
+	XSPIWriteByte(0x08, 0x5);
+
+	if (!XNANDWaitReady(0x1000))
+		return 0x8003;
+
+	return XNANDGetStatus();	
 }
 
 void XNANDWriteStart()
 {
-	BYTE tmp[4];
-
-	XSPIRead(4, tmp);
-	XSPIWrite(4, tmp);
-
+	XNANDClearStatus();
 	XSPIWrite0(0x0C);
 }
 
 void XNANDWriteProcess(BYTE *buffer, BYTE words) {
-	BYTE tmp[4];
 	while (words--) {
-		tmp[0] = tmp[1] = tmp[2] = tmp[3] = 0x55;
 		XSPIWrite(0x10, buffer);
 		XSPIWriteByte(0x08, 0x01);
 		buffer += 4;
@@ -113,31 +101,15 @@ void XNANDWriteProcess(BYTE *buffer, BYTE words) {
 WORD XNANDWriteExecute(DWORD block) {
 	WORD res;
 	WORD tries = 0x1000;
-	BYTE tmp[4];
-	block <<= 9;
 
-	tmp[0] = ((BYTE *)&block)[0];
-	tmp[1] = ((BYTE *)&block)[1];
-	tmp[2] = ((BYTE *)&block)[2];
-	tmp[3] = ((BYTE *)&block)[3];
-	XSPIWrite(0x0C, tmp);
+	XSPIWriteDWORD(0x0C, block << 9);
 
 	XSPIWriteByte(0x08, 0x55);
 	XSPIWriteByte(0x08, 0xAA);
 	XSPIWriteByte(0x08, 0x4);
 
-	while(tries--) {
-		XSPIRead(0x04, tmp);
-		
-		if (!(tmp[0] & 0x01))
-			break;
-	}
+	if (!XNANDWaitReady(0x1000))
+		return 0x8021;
 
-	((BYTE *)&res)[0] = tmp[1];
-	((BYTE *)&res)[1] = tmp[0];
-
-	if ((tmp[0] != 0x00) || (tmp[1] != 0x02))
-		res |= 0x8000;
-
-	return res;	
+	return XNANDGetStatus();	
 }
