@@ -144,6 +144,13 @@ void WriteProgMem(void) //TESTED: Passed
      * at a time.
      * This limitation will be fixed in the future version.
      */
+	rom far char *user_start = 0x800UL;
+
+	counter = 0;
+	//do not overwrite the bootloader!
+	while (((dataPacket.ADR.pAdr)+counter) < user_start)
+		counter++;
+
     dataPacket.ADR.low &= 0b11110000;  //Force 16-byte boundary
     EECON1 = 0b10000100;        //Setup writes: EEPGD=1,WREN=1
 
@@ -202,21 +209,6 @@ void WriteEE(void) //TESTED: Passed
     }//end for
 }//end WriteEE
 
-//WriteConfig is different from WriteProgMem b/c it can write a byte
-void WriteConfig(void) //TESTED: Passed
-{
-    EECON1 = 0b11000100;        //Setup writes: EEPGD=1,CFGS=1,WREN=1
-    for (counter = 0; counter < dataPacket.len; counter++)
-    {
-        *((dataPacket.ADR.pAdr)+counter) = \
-        dataPacket.data[counter];
-        StartWrite();
-    }//end for
-    
-    TBLPTRU = 0x00;         // forces upper byte back to 0x00
-                            // optional fix is to set large code model
-}//end WriteConfig
-
 void BootService(void)
 {
     if((usb_device_state < CONFIGURED_STATE)||(UCONbits.SUSPND==1)) return;
@@ -265,11 +257,6 @@ void BootService(void)
 
             case WRITE_EEDATA:
                 WriteEE();
-                counter=0x01;
-                break;
-
-            case WRITE_CONFIG:
-                WriteConfig();
                 counter=0x01;
                 break;
             
