@@ -47,7 +47,12 @@ except ImportError:
 
 # first, unpack base input image. We are ignoring any updates here
 import hmac, sha, struct, sys
-import Crypto.Cipher.ARC4 as RC4
+try:
+	import Crypto.Cipher.ARC4 as RC4
+except ImportError:
+	print "Error importing Crypto.Cipher.ARC4 - please install python-crypto!"
+	print "You can get it from http://www.dlitz.net/software/pycrypto/"
+	sys.exit(-1)
 
 def unpack_base_image(image):
 	global SMC, CB, CD, CE, Keyvault
