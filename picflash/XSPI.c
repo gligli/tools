@@ -23,17 +23,49 @@
 #define MOSIHi	LATBbits.LATB6 = 1
 #define MOSITris TRISBbits.TRISB6
 
+#define KSKLo   LATBbits.LATB7 = 0
+#define KSKHi   LATBbits.LATB7 = 1
+#define KSKTris TRISBbits.TRISB7
+
 #define MISO	PORTBbits.RB2
 
 void XSPIInit()
 {
-	EJHi; SSHi; XXHi; SCKHi;
+	EJHi; SSHi; XXHi; SCKHi; KSKHi;
 
+	KSKTris = 0;
 	EJTris = 0;
 	XXTris = 0;
 	SSTris = 0;
 	SCKTris = 0;
 	MOSITris = 0;
+}
+
+void XSPIPowerUp()
+{
+	KSKLo;
+	Delay1KTCYx(0);
+	KSKHi;
+	Delay1KTCYx(0);
+	KSKLo;
+	Delay1KTCYx(0);
+	KSKHi;
+	Delay1KTCYx(0);
+	KSKLo;
+	Delay1KTCYx(0);
+	KSKHi;
+	Delay1KTCYx(0);
+	KSKLo;
+	Delay1KTCYx(0);
+	KSKHi;
+}
+
+void XSPIShutdown()
+{
+	SSHi; XXLo; EJLo;
+	Delay1KTCYx(0);
+	EJHi;
+
 }
 
 void XSPIEnterFlashMode()

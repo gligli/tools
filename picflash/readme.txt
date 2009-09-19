@@ -7,6 +7,9 @@ SCK          J1D2.3        B3 Pin 24 (use resistor)
 MOSI         J1D2.1        B6 Pin 27 (use resistor)
 MISO         J1D2.4        B2 Pin 23 (NO RESISTOR)
 
+and for remote power-on:
+
+KIOSK        J2B1.11       B7 Pin 28 (use resistor)
 
 You can power the PIC from either the USB or from the mainboard. In any
 case, C2 (Pin 13) must be connected to +5V from the USB to allow proper sensing

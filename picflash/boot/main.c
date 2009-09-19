@@ -77,7 +77,7 @@ with the PIC18F87J50 Family of microcontrollers.
 #pragma config PBADEN   = OFF
 #pragma config CCP2MX   = ON
 #pragma config STVREN   = ON
-#pragma config LVP      = ON
+#pragma config LVP      = OFF
 //#pragma config ICPRT    = OFF       // Dedicated In-Circuit Debug/Programming
 #pragma config XINST    = OFF       // Extended Instruction Set
 #pragma config CP0      = OFF
@@ -144,17 +144,25 @@ void _low_ISR (void)
 void main(void)
 {
     ADCON1 |= 0x0F;
-    
-    TRISCbits.TRISC6 = 0; 
-	LATCbits.LATC6 = 1;
 
-    //Check Bootload Mode Entry Condition
-    if((RV!=0xFFFF) && (PORTCbits.RC6 == 1))
-    {
-		TRISCbits.TRISC6 = 1;
+	if (STKPTR & 0x80) {
+		STKPTR &=~0x80;
+
         _asm goto RM_RESET_VECTOR _endasm
-    }//end if
-    
+	}
+	
+	if (RCON & 0x10) {
+
+	    TRISCbits.TRISC6 = 0; 
+		LATCbits.LATC6 = 1;
+	
+	    //Check Bootload Mode Entry Condition
+	    if((RV!=0xFFFF) && (PORTCbits.RC6 == 1))
+	    {
+	        _asm goto RM_RESET_VECTOR _endasm
+	    }//end if
+	}
+
     //Bootload Mode
     mInitializeUSBDriver();     // See usbdrv.h
     USBCheckBusStatus();        // Modified to always enable USB module

@@ -42,6 +42,9 @@ USB_HANDLE FlashDataInHandle;
 
 static void FlashDataStatus(void);
 static void FlashDataInit(void);
+static void PowerUp(void);
+static void Shutdown(void);
+static void Update(void);
 static void FlashDataRead(void);
 static void FlashDataErase(void);
 static void FlashDataWrite(void);
@@ -75,6 +78,9 @@ void FlashCheckVendorReq(void)
 		case 0x04:
 		case 0x05:
         case 0x06:
+		case 0x10:
+		case 0x11:
+		case 0xF0:
 			gNextCommand = SetupPkt.bRequest;
 
             outPipes[0].wCount.Val = SetupPkt.wLength;
@@ -82,6 +88,7 @@ void FlashCheckVendorReq(void)
             outPipes[0].pFunc = FlashVendorReqHandler;
             outPipes[0].info.bits.busy = 1;
 			break;
+
     }
 }
 
@@ -137,8 +144,40 @@ void FlashPollProc(void)
 		case 0x04: FlashDataDeInit(); break;
 		case 0x05: FlashDataStatus(); break;
 		case 0x06: FlashDataErase(); break;
+
+		case 0x10: PowerUp(); break;
+		case 0x11: Shutdown(); break;
+		case 0xF0: Update(); break;
 	}
 
+}
+
+void PowerUp() 
+{
+	XSPILeaveFlashMode();
+	XSPIPowerUp();
+	gCurrentCommand = 0xFF;
+}
+
+void Shutdown()
+{
+	XSPILeaveFlashMode();
+	XSPIShutdown();
+	gCurrentCommand = 0xFF;
+}
+
+void Update()
+{
+	unsigned short c = 0;
+	while(--c);
+
+	UCONbits.USBEN = 0;
+	while(--c);
+	while(--c);
+	while(--c);
+	while(--c);
+
+	Reset();
 }
 
 void FlashReadStatusCB(BYTE *buffer, BYTE len)

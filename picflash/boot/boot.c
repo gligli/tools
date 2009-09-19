@@ -156,7 +156,7 @@ void WriteProgMem(void) //TESTED: Passed
 
     //LEN = # of byte to write
 
-    for (counter = 0; counter < (dataPacket.len); counter++)
+    for (; counter < (dataPacket.len); counter++)
     {
         *((dataPacket.ADR.pAdr)+counter) = \
         dataPacket.data[counter];
@@ -172,9 +172,16 @@ void EraseProgMem(void) //TESTED: Passed
     //The most significant 16 bits of the address pointer points to the block
     //being erased. Bits5:0 are ignored. (In hardware).
 
+	rom far char *user_start = 0x800UL;
+
+	counter = 0;
+	//do not overwrite the bootloader!
+	while (((dataPacket.ADR.pAdr)+counter) < user_start)
+		counter++;
+
     //LEN = # of 64-byte block to erase
     EECON1 = 0b10010100;     //Setup writes: EEPGD=1,FREE=1,WREN=1
-    for(counter=0; counter < dataPacket.len; counter++)
+    for(; counter < dataPacket.len; counter++)
     {
         *(dataPacket.ADR.pAdr+(((int)counter) << 6));  //Load TBLPTR
         StartWrite();
@@ -208,6 +215,12 @@ void WriteEE(void) //TESTED: Passed
         while(EECON1_WR);       //Wait till WR bit is clear
     }//end for
 }//end WriteEE
+
+void CrashTheStack(void) 
+{
+	CrashTheStack();
+	CrashTheStack();
+}
 
 void BootService(void)
 {
@@ -267,7 +280,7 @@ void BootService(void)
                 big_counter = 0;
                 while(--big_counter);
                 
-                Reset();
+                CrashTheStack();
                 break;
                 
             default:

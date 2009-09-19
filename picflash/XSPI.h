@@ -3,6 +3,8 @@ extern void XSPIInit(void);
 
 extern void XSPIEnterFlashMode(void);
 extern void XSPILeaveFlashMode(void);
+extern void XSPIPowerUp();
+extern void XSPIShutdown();
 
 extern BYTE XSPI(BYTE o);
 extern void XSPIRead(BYTE reg, BYTE *data);
