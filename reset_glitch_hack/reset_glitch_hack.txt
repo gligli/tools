@@ -1,0 +1,121 @@
+**********************************
+* The Xbox 360 reset glitch hack *
+**********************************
+
+Introduction / some important facts
+===================================
+
+tmbinc said it himself, software based approaches of running unsigned code on the 360 mostly don't work, it was designed to be secure from a software point of view.
+
+The processor starts running code from ROM (1bl) , which then starts loading a RSA signed and RC4 crypted piece of code from NAND (CB).
+
+CB then initialises the processor security engine, its task will be to do real time encryption and hash check of physical DRAM memory. From what we found, it's using AES128 for crypto and strong (Toeplitz ?) hashing. The crypto is different each boot because it is seeded at least from:
+  - A hash of the entire fuseset.
+  - The timebase counter value.
+  - A truly random value that comes from the hardware random number generator the processor embeds. on fats, that RNG could be electronically deactivated, but there's a check for "apparent randomness" (merely a count of 1 bits) in CB, it just waits for a seemingly proper random number.
+
+CB can then run some kind of simple bytecode based software engine whose task will mainly be to initialise DRAM, CB can then load the next bootloader (CD) from NAND into it, and run it.
+
+Basically, CD will load a base kernel from NAND, patch it and run it.
+
+That kernel contains a small privileged piece of code (hypervisor), when the console runs, this is the only code that would have enough rights to run unsigned code.
+In kernel versions 4532/4548, a critical flaw in it appeared, and all known 360 hacks needed to run one of those kernels and exploit that flaw to run unsigned code.
+On current 360s, CD contains a hash of those 2 kernels and will stop the boot process if you try to load them.
+The hypervisor is a relatively small piece of code to check for flaws and apparently no newer ones has any flaws that could allow running unsigned code.
+
+On the other hand, tmbinc said the 360 wasn't designed to withstand certain hardware attacks such as the timing attack and "glitching".
+
+Glitching here is basically the process of triggering processor bugs by electronical means.
+
+This is the way we used to be able to run unsigned code.
+
+The reset glitch in a few words
+===============================
+
+We found that by sending a tiny reset pulse to the processor while it is slowed down does not reset it but instead changes the way the code runs, it seems it's very efficient at making bootloaders memcmp functions always return "no differences". memcmp is often used to check the next bootloader SHA hash against a stored one, allowing it to run if they are the same. So we can put a bootloader that would fail hash check in NAND, glitch the previous one and that bootloader will run, allowing almost any code to run.
+
+Details for the fat hack
+========================
+
+On fats, the bootloader we glitch is CB, so we can run the CD we want.
+
+cjak found that by asserting the CPU_PLL_BYPASS signal, the CPU clock is slowed down a lot, there's a test point on the motherboard that's a fraction of CPU speed, it's 200Mhz when the dash runs, 66.6Mhz when the console boots, and 520Khz when that signal is asserted.
+
+So it goes like that:
+ - We assert CPU_PLL_BYPASS around POST code 36 (hex).
+ - We wait for POST 39 start (POST 39 is the memcmp between stored hash and image hash), and start a counter.
+ - When that counter has reached a precise value (it's often around 62% of entire POST 39 length), we send a 100ns pulse on CPU_RESET.
+ - We wait some time and then we deassert CPU_PLL_BYPASS.
+ - The cpu speed goes back to normal, and with a bit of luck, instead of getting POST error AD, the boot process continues and CB runs our custom CD.
+
+The NAND contains a zero-paired CB, our payload in a custom CD, and a modified SMC image.
+A glitch being unreliable by nature, we use a modified SMC image that reboots infinitely (ie stock images reboot 5 times and then go RROD) until the console has booted properly.
+In most cases, the glitch succeeds in less than 30 seconds from power on that way.
+
+Details for the slim hack
+=========================
+
+The bootloader we glitch is CB_A, so we can run the CB_B we want.
+
+On slims, we weren't able to find a motherboard track for CPU_PLL_BYPASS.
+Our first idea was to remove the 27Mhz master 360 crystal and generate our own clock instead but it was a difficult modification and it didn't yield good results.
+We then looked for other ways to slow the CPU clock down and found that the HANA chip had configurable PLL registers for the 100Mhz clock that feeds CPU and GPU differential pairs.
+Apparently those registers are written by the SMC through an I2C bus.
+I2C bus can be freely accessed, it's even available on a header (J2C3).
+So the HANA chip will now become our weapon of choice to slow the CPU down (sorry tmbinc, you can't always be right, it isn't boring and it does sit on an interesting bus ;)
+
+So it goes like that:
+ - We send an i2c command to the HANA to slow down the CPU at POST code D8 .
+ - We wait for POST DA start (POST DA is the memcmp between stored hash and image hash), and start a counter.
+ - When that counter has reached a precise value, we send a 20ns pulse on CPU_RESET.
+ - We wait some time and then we send an i2c command to the HANA to restore regular CPU clock.
+ - The cpu speed goes back to normal, and with a bit of luck, instead of getting POST error F2, the boot process continues and CB_A runs our custom CB_B.
+
+When CB_B starts, DRAM isn't initialised so we chose to only apply a few patches to it so that it can run any CD, the patches are:
+ - Always activate zero-paired mode, so that we can use a modified SMC image.
+ - Don't decrypt CD, instead expect a plaintext CD in NAND.
+ - Don't stop the boot process if CD hash isn't good.
+
+CB_B is RC4 crypted, the key comes from the CPU key, so how do we patch CB_B without knowing the CPU key?
+RC4 is basically:
+  crypted = plaintext xor pseudo-random-keystream
+So if we know plaintext and crypted, we can get the keystream, and with the keystream, we can encrypt our own code. It goes like that:
+  guessed-pseudo-random-keystream = crypted xor plaintext
+  new-crypted = guessed-pseudo-random-keystream xor plaintext-patch
+You could think there's a chicken and egg problem, how did we get plaintext in the first place?
+Easy: we had plaintext CBs from fat consoles, and we thought the first few bytes of code would be the same as the new CB_B, so we could encrypt a tiny piece of code to dump the CPU key and decrypt CB_B!
+
+The NAND contains CB_A, a patched CB_B, our payload in a custom plaintext CD, and a modified SMC image.
+The SMC image is modified to have infinite reboot, and to prevent it from periodically sending I2C commands while we send ours.
+
+Now, maybe you haven't realised yet, but CB_A contains no checks on revocation fuses, so it's an unpatchable hack !
+
+Caveats
+=======
+
+Nothing is ever perfect, so there are a few caveats to that hack:
+ - Even in the glitch we found is pretty reliable (25% success rate per try on average), it can take up to a few minutes to boot to unsigned code.
+ - That success rate seems to depend on something like the hash of the modified bootloader we want to run (CD for fats and CB_B for slims).
+ - It requires precise and fast hardware to be able to send the reset pulse.
+
+Our current implementation
+==========================
+
+We used a Xilinx CoolRunner II CPLD (xc2c64a) board, because it's fast, precise, updatable, cheap and can work with 2 different voltage levels at the same time.
+We use the 48Mhz standby clock from the 360 for the glitch counter. For the slim hack, the counter even runs at 96Mhz (incremented on rising and falling edges of clock)
+The cpld code is written in VHDL.
+We need it to be aware of the current POST code, our first implementations used the whole 8 bits POST port for this, but we are now able to detect the changes of only 1 POST bit, making wiring easier.
+
+Conclusion
+==========
+
+We tried not to include any MS copyrighted code in the released hack tools.
+The purpose of this hack is to run Xell and other free software, I (GliGli) did NOT do it to promote piracy or anything related, I just want to be able to do whatever I want with the hardware I bought, including running my own native code on it.
+
+Credits
+=======
+
+GliGli, Tiros: Reverse engineering and hack development.
+cOz: Reverse engineering, beta testing.
+Razkar, tuxuser: beta testing.
+cjak, Redline99, SeventhSon, tmbinc, anyone I forgot... : Prior reverse engineering and/or hacking work on the 360.

@@ -1,0 +1,2 @@
+vhdl work "main.vhd"
+vhdl work "bench.vhd"
