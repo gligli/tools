@@ -15,6 +15,7 @@ SCRIPT_VERSION = 0x01
 Keyvault = None
 SMC = None
 CB_A = None
+CB_A_crypted = None
 CB_B = None
 CD = None
 CD_plain = None
@@ -259,14 +260,21 @@ def patch_CB(CB):
 
 # SMC_patches is an array of patchsets, a patchset is a crc32 of the image minus first 4 bytes, human readable version info and an array of patches, a patch is: [offset,byte0,byte1,...]
 
-SMC_patches = [[0xf9c96639,"Trinity (for slims), version 3.1",[[0x13b3,0x00,0x00]]],
-               [0x5b3aed00,"Jasper (for all hdmi fats), version 2.3",[[0x12ba,0x00,0x00]]]]
+SMC_patches = [[0xf9c96639,"Trinity, version 3.1",[[0x13b3,0x00,0x00]]],
+               [0x5b3aed00,"Jasper, version 2.3",[[0x12ba,0x00,0x00]]],
+               [0x9ad5b7ee,"Zephyr, version 1.10",[[0x1257,0x00,0x00]]],
+               [0x7e5bc217,"Zephyr, version 1.13",[[0x12a3,0x00,0x00]]],
+               [0x1d0c613e,"Falcon, version 1.6",[[0x12a3,0x00,0x00]]]]
 
 def patch_SMC(SMC):
 	found = False
 
+	smc_crc = binascii.crc32(SMC[4:]) & 0xffffffff
+
+	print "CRC32: %x" % (smc_crc)
+
 	for versions in SMC_patches:
-		if binascii.crc32(SMC[4:]) & 0xffffffff == versions[0]:
+		if smc_crc == versions[0]:
 			print "patchset \"%s\" matches, %d patch(es)" % (versions[1],len(versions[2]))
 			found  = True
 			for patches in versions[2]:
@@ -329,6 +337,10 @@ for i in sys.argv[1:]:
 		unpack_base_image(image)
 		CB_A_crypted = CB_A
 		SMC = decrypt_SMC(SMC)
+	elif image[:2] == "CB":
+		print " * found (hopefully) decrypted CB"
+		CB_A_crypted = None
+		CB_A = image
 	elif image[:2] == "CD" and allzero(image[0x20:0x230]):
 		print " * found decrypted CD"
 		CD_plain = image
@@ -354,9 +366,18 @@ print "CB_B:", CB_B and build(CB_B) or "missing"
 print "CD (image):", CD and build(CD) or "missing"
 print "CD (decrypted):", CD_plain and build(CD_plain) or "missing"
 
-print " * decrypting..."
+if not CB_B:
+	print " * checking for proper 1BL key...",
+	sum = 0
+	for v in secret_1BL:
+		sum = sum + ord(v)
+	assert sum == 0x983, "you need to fill in secret_1BL properly!"
+	print "ok"
 
-CB_A = decrypt_CB(CB_A)
+if CB_A_crypted:
+	print " * decrypting..."
+	CB_A = decrypt_CB(CB_A_crypted)
+
 print " * checking if all files decrypted properly...",
 assert allzero(SMC[-4:])
 print "ok"
