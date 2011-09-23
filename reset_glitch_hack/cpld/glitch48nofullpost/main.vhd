@@ -10,6 +10,7 @@ entity main is
     POST_WIDTH : integer := 7
   );
   port (
+    DBG : out STD_LOGIC := '0';
     POSTBIT : in STD_LOGIC;
     CLK : in STD_LOGIC;
     CPU_PLL_BYPASS : out STD_LOGIC := '0';
@@ -28,7 +29,7 @@ constant POST_37 : integer := 13;
 constant POST_39 : integer := 14;
 constant POST_3B : integer := 15;
 
-constant WIDTH_RESET_START  : integer := 1628; -- zephyr: 1723, jasper: 1628
+constant WIDTH_RESET_START  : integer := 1603; -- zephyr: 1723, falcon: 1603, jasper: 1628
 constant WIDTH_RESET_END    : integer := 5;
 constant WIDTH_BYPASS_END   : integer := 48000;
 
@@ -73,8 +74,10 @@ begin
       -- bypass
       if (to_integer(postcnt) >= POST_37)  and (to_integer(postcnt) <= POST_3B) and (cnt < TIME_BYPASS_END) then
         CPU_PLL_BYPASS <= '1';
+        DBG <= '1';
       else
         CPU_PLL_BYPASS <= '0';
+        DBG <= '0';
       end if;
       
       -- reset

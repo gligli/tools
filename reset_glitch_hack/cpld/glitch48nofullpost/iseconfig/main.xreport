@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <report-views version="2.0" >
  <header>
-  <DateModified>2011-08-27T21:16:48</DateModified>
+  <DateModified>2011-09-23T12:23:52</DateModified>
   <ModuleName>main</ModuleName>
   <SummaryTimeStamp>2010-11-11T12:04:08</SummaryTimeStamp>
-  <SavedFilePath>C:/X360 Hack/x360dev/cpld/glitch48nofullpost/iseconfig/main.xreport</SavedFilePath>
-  <ImplementationReportsDirectory>C:/X360 Hack/x360dev/cpld/glitch48nofullpost\</ImplementationReportsDirectory>
+  <SavedFilePath>C:/X360 Hack/x360dev/ppc/tools/reset_glitch_hack/cpld/glitch48nofullpost/iseconfig/main.xreport</SavedFilePath>
+  <ImplementationReportsDirectory>C:/X360 Hack/x360dev/ppc/tools/reset_glitch_hack/cpld/glitch48nofullpost\</ImplementationReportsDirectory>
   <DateInitialized>2010-08-27T23:39:24</DateInitialized>
   <EnableMessageFiltering>false</EnableMessageFiltering>
  </header>

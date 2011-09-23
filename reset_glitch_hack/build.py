@@ -388,7 +388,7 @@ print "ok"
 
 xenon_builds = []
 zephyr_builds = [4578]
-falcon_builds = []
+falcon_builds = [5771]
 jasper_builds = [6750]
 trinity_builds = [9188]
 
